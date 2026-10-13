@@ -4,3 +4,5 @@ scikit-learn
 streamlit
 matplotlib
 pickle
+flask
+jupyter
