@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diabetes Risk Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e9f0f4; --card:#ffffff; --ink:#10303c; --muted:#5b7380; --line:#d3e0e7;
+  --accent:#0e7490; --accent-d:#0b5a70; --ok:#15803d; --warn:#c2410c; --bad:#b91c1c;
+  --field:#f5f9fb; --shadow:0 12px 40px rgba(16,48,60,.12);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0c1b22; --card:#13262f; --ink:#e6f1f5; --muted:#8fa9b5; --line:#24404c;
+        --accent:#22b8d8; --accent-d:#5fd0e8; --field:#0f2029; --shadow:0 12px 40px rgba(0,0,0,.4);
+        --ok:#4ade80; --warn:#fb923c; --bad:#f87171;}
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);
+  font-family:'Manrope',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;line-height:1.5;padding:32px 16px 56px}
+.wrap{max-width:720px;margin:0 auto}
+header{margin-bottom:22px}
+h1{font-size:clamp(1.9rem,5vw,2.6rem);line-height:1.1;margin:0 0 8px;font-weight:800;letter-spacing:-.02em}
+header p{margin:0;color:var(--muted);max-width:52ch}
+
+.card{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:26px}
+.progress{display:flex;align-items:center;gap:12px;margin-bottom:20px;font-size:.85rem;color:var(--muted)}
+.bar{flex:1;height:8px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .35s ease}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 18px}
+@media(max-width:560px){.grid{grid-template-columns:1fr}}
+.field label{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:.9rem;margin-bottom:6px}
+.field label span{font-weight:500;color:var(--muted);font-size:.78rem}
+.field input{width:100%;padding:12px 14px;font:inherit;color:var(--ink);background:var(--field);
+  border:1.5px solid var(--line);border-radius:10px;transition:border-color .2s,box-shadow .2s}
+.field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 22%,transparent)}
+.field.invalid input{border-color:var(--bad)}
+.field.valid input{border-color:var(--ok)}
+.msg{min-height:1.1em;margin:4px 0 0;font-size:.78rem;color:var(--muted)}
+.field.invalid .msg{color:var(--bad)}
+
+.bmi{margin-top:18px;border:1.5px dashed var(--line);border-radius:12px;padding:12px 14px}
+.bmi summary{cursor:pointer;font-weight:700;font-size:.9rem}
+.bmi .row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-top:12px;align-items:end}
+.bmi input{width:100%;padding:10px 12px;font:inherit;color:var(--ink);background:var(--field);border:1.5px solid var(--line);border-radius:10px}
+.bmi small{display:block;color:var(--muted);margin-bottom:4px;font-size:.78rem}
+@media(max-width:560px){.bmi .row{grid-template-columns:1fr 1fr}.bmi .row button{grid-column:1/-1}}
+
+.actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+button{font:inherit;font-weight:700;border-radius:10px;cursor:pointer;padding:12px 18px;border:1.5px solid var(--line);
+  background:transparent;color:var(--ink);transition:background .2s,transform .1s}
+button:hover{background:var(--field)}
+button:active{transform:scale(.98)}
+button:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#go{flex:1;min-width:180px;background:var(--accent);border-color:var(--accent);color:#fff;font-size:1rem;position:relative}
+#go:hover{background:var(--accent-d)}
+#go[disabled]{opacity:.7;cursor:progress}
+#go .spin{display:none;width:16px;height:16px;border:2.5px solid #fff5;border-top-color:#fff;border-radius:50%;
+  vertical-align:-3px;margin-right:8px;animation:sp .7s linear infinite}
+#go.loading .spin{display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+.result{margin-top:22px;border-radius:16px;padding:22px;text-align:center;border:1.5px solid var(--line);background:var(--field)}
+.result[hidden]{display:none}
+.gauge{width:min(100%,300px);margin:0 auto}
+.gauge path{fill:none;stroke-width:16;stroke-linecap:round}
+.gauge .track{stroke:var(--line)}
+.gauge .fill{stroke:var(--tone,var(--accent));stroke-dasharray:282.74;stroke-dashoffset:282.74;
+  transition:stroke-dashoffset 1.2s cubic-bezier(.2,.8,.2,1)}
+.gauge text{fill:var(--ink);font-weight:800;font-size:30px;text-anchor:middle}
+.verdict{font-size:1.35rem;font-weight:800;color:var(--tone,var(--ink));margin:6px 0 4px}
+.result p{margin:0 auto;color:var(--muted);max-width:46ch;font-size:.9rem}
+.result.high{--tone:var(--bad)} .result.low{--tone:var(--ok)} .result.err{--tone:var(--warn)}
+.note{margin-top:18px;font-size:.78rem;color:var(--muted);text-align:center}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Diabetes risk check</h1>
+    <p>Enter your latest measurements. The model estimates how likely a diabetes diagnosis is, based on the Pima dataset.</p>
+  </header>
+
+  <div class="card">
+    <div class="progress"><div class="bar"><i id="bar"></i></div><b id="count">0 of 8 filled</b></div>
+
+    <form id="form" action="/predict" method="POST" novalidate>
+      <div class="grid" id="grid"></div>
+
+      <details class="bmi">
+        <summary>Don't know your BMI? Calculate it</summary>
+        <div class="row">
+          <div><small>Height (cm)</small><input id="h" type="number" inputmode="decimal" min="50" max="250"></div>
+          <div><small>Weight (kg)</small><input id="w" type="number" inputmode="decimal" min="10" max="400"></div>
+          <button type="button" id="calc">Use this BMI</button>
+        </div>
+      </details>
+
+      <div class="actions">
+        <button type="submit" id="go"><span class="spin"></span><span id="golabel">Check my risk</span></button>
+        <button type="button" id="example">Fill example</button>
+        <button type="button" id="reset">Clear</button>
+      </div>
+    </form>
+
+    <div class="result" id="result" hidden aria-live="polite" tabindex="-1">
+      <svg class="gauge" viewBox="0 0 200 120" role="img" aria-label="Risk gauge">
+        <path class="track" d="M10 100 A90 90 0 0 1 190 100"/>
+        <path class="fill" id="fill" d="M10 100 A90 90 0 0 1 190 100"/>
+        <text x="100" y="98" id="pct">0%</text>
+      </svg>
+      <div class="verdict" id="verdict"></div>
+      <p id="detail"></p>
+    </div>
+
+    <p class="note">This is a screening estimate, not a diagnosis. Talk to a doctor about your results.</p>
+  </div>
+</div>
+
+<script>
+// Field definitions: name must match the Flask form keys exactly.
+const FIELDS = [
+  {n:'Pregnancies', l:'Pregnancies', u:'count', min:0, max:20, step:1, hint:'Number of times pregnant'},
+  {n:'Glucose', l:'Glucose', u:'mg/dL', min:40, max:300, step:1, hint:'Fasting plasma glucose'},
+  {n:'BloodPressure', l:'Blood pressure', u:'mm Hg', min:30, max:200, step:1, hint:'Diastolic (the lower number)'},
+  {n:'SkinThickness', l:'Skin thickness', u:'mm', min:0, max:100, step:1, hint:'Triceps fold. Enter 0 if not measured', zeroOk:true},
+  {n:'Insulin', l:'Insulin', u:'mu U/mL', min:0, max:900, step:1, hint:'2-hour serum. Enter 0 if not measured', zeroOk:true},
+  {n:'BMI', l:'BMI', u:'kg/m²', min:10, max:70, step:0.1, hint:'Body mass index'},
+  {n:'DiabetesPedigreeFunction', l:'Pedigree function', u:'score', min:0, max:2.5, step:0.001, hint:'Family history score, typically 0.1 to 1.5'},
+  {n:'Age', l:'Age', u:'years', min:1, max:120, step:1, hint:'Age in years'}
+];
+const EXAMPLE = {Pregnancies:5,Glucose:166,BloodPressure:72,SkinThickness:19,Insulin:175,BMI:25.8,DiabetesPedigreeFunction:0.587,Age:51};
+const KEY = 'diabetes-form-v1';
+
+const grid = document.getElementById('grid');
+grid.innerHTML = FIELDS.map(f => `
+  <div class="field" data-f="${f.n}">
+    <label for="${f.n}">${f.l}<span>${f.u}</span></label>
+    <input type="number" id="${f.n}" name="${f.n}" min="${f.min}" max="${f.max}" step="${f.step}" inputmode="decimal" required>
+    <p class="msg">${f.hint}</p>
+  </div>`).join('');
+
+const $ = id => document.getElementById(id);
+const inputs = FIELDS.map(f => $(f.n));
+
+function validate(f, el, touched){
+  const box = el.closest('.field'), msg = box.querySelector('.msg');
+  box.classList.remove('valid','invalid');
+  if (el.value === ''){ msg.textContent = f.hint; return false; }
+  const v = Number(el.value);
+  if (Number.isNaN(v) || v < f.min || v > f.max){
+    if (touched){ box.classList.add('invalid'); msg.textContent = `Enter a value between ${f.min} and ${f.max}`; }
+    return false;
+  }
+  box.classList.add('valid'); msg.textContent = f.hint;
+  return true;
+}
+function refresh(touched){
+  let ok = 0;
+  FIELDS.forEach((f,i) => { if (validate(f, inputs[i], touched)) ok++; });
+  $('bar').style.width = (ok / FIELDS.length * 100) + '%';
+  $('count').textContent = `${ok} of ${FIELDS.length} filled`;
+  save();
+  return ok === FIELDS.length;
+}
+function save(){
+  try{ const d = {}; inputs.forEach(i => d[i.name] = i.value); localStorage.setItem(KEY, JSON.stringify(d)); }catch(e){}
+}
+function load(){
+  try{ const d = JSON.parse(localStorage.getItem(KEY) || '{}'); inputs.forEach(i => { if (d[i.name] != null) i.value = d[i.name]; }); }catch(e){}
+}
+function fill(data){ inputs.forEach(i => i.value = data[i.name] ?? ''); refresh(true); }
+
+inputs.forEach(i => i.addEventListener('input', () => refresh(true)));
+
+$('example').onclick = () => fill(EXAMPLE);
+$('reset').onclick = () => { inputs.forEach(i => i.value = ''); $('result').hidden = true; refresh(false); inputs[0].focus(); };
+
+$('calc').onclick = () => {
+  const h = Number($('h').value) / 100, w = Number($('w').value);
+  if (h > 0 && w > 0){ $('BMI').value = (w / (h*h)).toFixed(1); refresh(true); $('BMI').focus(); }
+};
+
+$('form').addEventListener('submit', e => {
+  if (!refresh(true)){
+    e.preventDefault();
+    const bad = inputs.find((el,i) => !validate(FIELDS[i], el, true));
+    if (bad) bad.focus();
+    return;
+  }
+  const b = $('go'); b.classList.add('loading'); b.disabled = true; $('golabel').textContent = 'Checking...';
+});
+
+// Show the server's answer (prediction_text) as a gauge.
+const PREDICTION = {% if prediction_text %}{{ prediction_text | tojson }}{% else %}null{% endif %};
+function showResult(text){
+  const r = $('result'); r.hidden = false;
+  const m = text.match(/(\d+(?:\.\d+)?)\s*%/);
+  if (!m || /^error/i.test(text)){
+    r.className = 'result err'; $('pct').textContent = '--';
+    $('verdict').textContent = 'Could not check';
+    $('detail').textContent = text.replace(/^error:\s*/i, 'Something went wrong: ');
+    return;
+  }
+  const pct = Math.min(100, Math.max(0, parseFloat(m[1]))), high = /^high/i.test(text);
+  r.className = 'result ' + (high ? 'high' : 'low');
+  $('verdict').textContent = high ? 'Higher chance of diabetes' : 'Lower chance of diabetes';
+  $('detail').textContent = high
+    ? 'Your values look similar to people who were diagnosed. Consider booking a blood test with your doctor.'
+    : 'Your values look less like people who were diagnosed. Keep up regular check-ups.';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    $('fill').style.strokeDashoffset = 282.74 * (1 - pct / 100);
+  }));
+  let n = 0, step = pct / 40;
+  const t = setInterval(() => { n = Math.min(pct, n + step); $('pct').textContent = n.toFixed(0) + '%'; if (n >= pct) clearInterval(t); }, 25);
+  r.scrollIntoView({behavior:'smooth', block:'center'}); r.focus({preventScroll:true});
+}
+
+load(); refresh(false);
+if (PREDICTION) showResult(PREDICTION);
+</script>
+</body>
+</html>
